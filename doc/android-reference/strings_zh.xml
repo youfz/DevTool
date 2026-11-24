@@ -1,0 +1,2 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources><string name="app_name">DebugMate</string><string name="tab_home">首页</string><string name="tab_toolbox">工具箱</string><string name="tab_devices">设备</string><string name="tab_terminal">终端</string><string name="tab_history">记录</string><string name="theme_dark">深色主题</string><string name="theme_light">浅色主题</string><string name="theme_system">跟随系统</string></resources>

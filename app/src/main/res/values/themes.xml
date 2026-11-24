@@ -1,0 +1,4 @@
+<resources>
+<style name="Theme.DebugMate" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+<item name="colorPrimary">@color/dm_primary</item><item name="colorPrimaryVariant">@color/dm_primary</item><item name="colorOnPrimary">@android:color/white</item><item name="colorSecondary">@color/dm_primary</item><item name="android:colorBackground">@color/dm_background</item><item name="colorSurface">@color/dm_surface</item><item name="android:textColorPrimary">@color/dm_text_primary</item><item name="android:textColorSecondary">@color/dm_text_secondary</item><item name="android:statusBarColor">@color/dm_background</item><item name="android:navigationBarColor">@color/dm_background</item><item name="android:windowLightStatusBar">@bool/light_bars</item><item name="android:windowLightNavigationBar">@bool/light_bars</item>
+</style></resources>

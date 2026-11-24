@@ -1,0 +1,15 @@
+package com.test.tool
+
+import com.test.tool.camera.ZoomCalculator
+import org.junit.Assert.assertEquals
+import org.junit.Test
+
+class ZoomRangeTest {
+    @Test fun repeatedButtonPressesReachTwentyAndReturnToOne() {
+        var ratio = ZoomCalculator.MIN
+        repeat(100) { ratio = ZoomCalculator.next(ratio, .5f, ZoomCalculator.MAX) }
+        assertEquals(20f, ratio, 0f)
+        repeat(100) { ratio = ZoomCalculator.next(ratio, -.5f, ZoomCalculator.MAX) }
+        assertEquals(1f, ratio, 0f)
+    }
+}

@@ -1,0 +1,2 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources><string name="app_name">DebugMate</string><string name="tab_home">Home</string><string name="tab_toolbox">Toolbox</string><string name="tab_devices">Devices</string><string name="tab_terminal">Terminal</string><string name="tab_history">History</string><string name="theme_dark">Dark</string><string name="theme_light">Light</string><string name="theme_system">System default</string></resources>
