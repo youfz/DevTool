@@ -29,11 +29,11 @@ class MainActivity : AppCompatActivity() {
  private val radio get() = vm.container.radio
  private var radioLog: TextView? = null
  private val permissions = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { grants ->
-  if(grants.values.all { it }) radio.discover(vm.classic)
+  if(grants.values.all { it }) radio.discover(vm.scanClassic)
   else Toast.makeText(this,R.string.permission_hint,Toast.LENGTH_LONG).show()
  }
  private fun discover(classic: Boolean) {
-  vm.classic = classic
+  vm.scanClassic = classic
   vm.characteristicIndex = 0
   val needed = if(android.os.Build.VERSION.SDK_INT >= 31) arrayOf(android.Manifest.permission.BLUETOOTH_CONNECT,android.Manifest.permission.BLUETOOTH_SCAN) else arrayOf(android.Manifest.permission.ACCESS_FINE_LOCATION)
   if(needed.all { checkSelfPermission(it)==android.content.pm.PackageManager.PERMISSION_GRANTED }) radio.discover(classic)
@@ -48,10 +48,15 @@ class MainActivity : AppCompatActivity() {
   text(getString(R.string.spp_hint))
   if(state.status != 0) button(R.string.disconnect) { radio.close() }
   if(state.status == 0 && state.peers.isEmpty()) text(getString(R.string.no_peer))
-  for(peer in state.peers) {
+  val visiblePeers = if (state.status < 2) state.peers else emptyList()
+  for(peer in visiblePeers) {
    val entry = MaterialButton(this,null,com.google.android.material.R.attr.materialButtonOutlinedStyle)
-   entry.text = listOfNotNull(peer.name,peer.address,peer.rssi?.let { "$it dBm" }).joinToString("  ")
-   entry.setOnClickListener { radio.connect(peer,vm.classic) }
+   val name = peer.name?.takeIf { it.isNotBlank() } ?: getString(R.string.bluetooth_unknown_device)
+   val type = getString(if (peer.classic) R.string.bluetooth_type_classic else R.string.bluetooth_type_ble)
+   val addressAndSignal = listOfNotNull(peer.address, peer.rssi?.let { "$it dBm" }).joinToString("  ")
+   entry.setAllCaps(false)
+   entry.text = getString(R.string.bluetooth_result, type, name, addressAndSignal)
+   entry.setOnClickListener { radio.connect(peer) }
    binding.content.addView(entry)
   }
   if(state.status == 3) {
@@ -70,7 +75,7 @@ class MainActivity : AppCompatActivity() {
    val props = c?.properties ?: 0
    if(props and 2 != 0) button(R.string.read_value) { radio.operate(c,0,byteArrayOf()) }
    if(props and 48 != 0) button(R.string.subscribe) { radio.operate(c,2,byteArrayOf()) }
-   if(vm.classic || props and 12 != 0) {
+   if(state.classic || props and 12 != 0) {
     val hex = CheckBox(this).apply { setText(R.string.hex_mode); isChecked=vm.radioHex; setOnCheckedChangeListener { _,value -> vm.radioHex=value } }
     binding.content.addView(hex)
     input(R.string.radio_input,vm.radioDraft) { vm.radioDraft=it }
@@ -175,7 +180,13 @@ class MainActivity : AppCompatActivity() {
     button(R.string.encode) { convert(false) }
     if(page <= 11) button(R.string.decode) { convert(true) }
    }
-   2 -> { text(getString(if(radio.state.value.status == 3) R.string.connected else R.string.no_device)); button(R.string.bluetooth) { vm.page.value = 7 }; button(R.string.adb) { vm.page.value = 9 } }
+   2 -> {
+    text(getString(if(radio.state.value.status == 3) R.string.connected else R.string.no_device))
+    button(R.string.bluetooth) { vm.page.value = 7 }
+    if (resources.getBoolean(R.bool.show_debug_entries)) {
+     button(R.string.adb) { vm.page.value = 9 }
+    }
+   }
    9 -> { text(getString(R.string.hardware_pending)); text(getString(R.string.local_info, android.os.Build.BRAND,android.os.Build.MODEL,android.os.Build.VERSION.RELEASE))
     val memory=android.app.ActivityManager.MemoryInfo()
     getSystemService(android.app.ActivityManager::class.java)?.getMemoryInfo(memory)

@@ -12,8 +12,8 @@ import java.util.concurrent.Executors
 
 @SuppressLint("MissingPermission")
 class RadioRepository(private val context: Context) {
- data class Peer(val address: String, val name: String?, val rssi: Int?)
- data class State(val status: Int = 0, val peers: List<Peer> = emptyList(), val address: String = "", val characteristics: List<BluetoothGattCharacteristic> = emptyList(), val log: List<String> = emptyList(), val error: String = "")
+ data class Peer(val address: String, val name: String?, val rssi: Int?, val classic: Boolean)
+ data class State(val status: Int = 0, val peers: List<Peer> = emptyList(), val address: String = "", val characteristics: List<BluetoothGattCharacteristic> = emptyList(), val log: List<String> = emptyList(), val error: String = "", val classic: Boolean = false)
  val state = MutableStateFlow(State())
  private val handler = Handler(Looper.getMainLooper())
  private val adapter get() = context.getSystemService(BluetoothManager::class.java)?.adapter ?: error("Bluetooth unavailable")
@@ -39,21 +39,28 @@ class RadioRepository(private val context: Context) {
   runCatching { socket?.close() }; socket = null
   writes.clear(); writing=null
   busy = false
-  state.value = State(log = state.value.log)
+  state.value = State(peers = state.value.peers, log = state.value.log)
  }
  private fun fail(message: String) { close(); state.value = state.value.copy(error=message) }
  fun discover(classic: Boolean) {
   close()
+  state.value = state.value.copy(peers = emptyList())
   runCatching {
    check(adapter.isEnabled) { "Bluetooth disabled" }
    if(classic) {
-    state.value = state.value.copy(peers=adapter.bondedDevices.map { Peer(it.address,it.name,null) })
+    val peers = adapter.bondedDevices
+     .filter { it.type != BluetoothDevice.DEVICE_TYPE_LE }
+     .map { Peer(it.address, it.name, rssi = null, classic = true) }
+    state.value = state.value.copy(peers = peers)
    } else {
     val callback = object : ScanCallback() {
      override fun onScanResult(type: Int, result: ScanResult) {
       if(scan !== this) return
-      val peer = Peer(result.device.address,result.scanRecord?.deviceName,result.rssi)
-      state.value = state.value.copy(peers=(state.value.peers.filterNot { it.address == peer.address } + peer).takeLast(100))
+      val device = result.device
+      val peer = Peer(device.address, result.scanRecord?.deviceName, result.rssi, classic = false)
+      val current = state.value
+      val peers = mergeScanResult(current.peers, peer) { runCatching { device.name }.getOrNull() }
+      state.value = current.copy(peers = peers)
      }
      override fun onScanFailed(code: Int) { if(scan === this) fail("BLE scan: $code") }
     }
@@ -65,14 +72,14 @@ class RadioRepository(private val context: Context) {
    }
   }.onFailure { fail(it.message.orEmpty()) }
  }
- fun connect(peer: Peer, classic: Boolean) {
+ fun connect(peer: Peer) {
   close()
-  state.value = state.value.copy(status=2,address=peer.address)
+  state.value = state.value.copy(status = 2, address = peer.address, classic = peer.classic)
   handler.postDelayed(timeout,15000)
   val epoch = generation
   runCatching {
    val device = adapter.getRemoteDevice(peer.address)
-   if(classic) {
+   if(peer.classic) {
     val channel = device.createRfcommSocketToServiceRecord(UUID.fromString("00001101-0000-1000-8000-00805f9b34fb"))
     socket = channel
     reader.execute {
@@ -157,6 +164,19 @@ class RadioRepository(private val context: Context) {
   }.onFailure { log("ERROR "+it.message) }
  }
  private fun hex(bytes: ByteArray) = bytes.joinToString(" ") { "%02X".format(it) }
+}
+
+internal fun mergeScanResult(
+ peers: List<RadioRepository.Peer>,
+ result: RadioRepository.Peer,
+ cachedName: () -> String? = { null }
+): List<RadioRepository.Peer> {
+ val previous = peers.firstOrNull { it.address == result.address }
+ val name = result.name?.takeIf { it.isNotBlank() }
+  ?: previous?.name
+  ?: cachedName()?.takeIf { it.isNotBlank() }
+ return (peers.filterNot { it.address == result.address } + result.copy(name = name))
+  .sortedWith(compareByDescending<RadioRepository.Peer> { it.rssi }.thenBy { it.address })
 }
 
 

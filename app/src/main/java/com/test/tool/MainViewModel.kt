@@ -12,7 +12,7 @@ class MainViewModel(val container: AppContainer) : ViewModel() {
  var logFilter=""
  fun startLog() { localLog.start(viewModelScope) }
  var historyFilter = ""
- var classic = false
+ var scanClassic = false
  var radioHex = false
  var radioDraft = ""
  var characteristicIndex = 0

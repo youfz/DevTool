@@ -18,11 +18,14 @@ class Workbench(private val parent: LinearLayout, private val open: (Int) -> Uni
   if (bold) setTypeface(typeface, Typeface.BOLD)
  }
  private data class Tile(val id: Int, val name: Int, val icon: Int, val color: Int, val hint: Int = 0)
- private val primary = listOf(
-  Tile(5,R.string.modules_json,R.drawable.dm_json,R.color.dm_primary,R.string.json_hint),
-  Tile(7,R.string.modules_bt,R.drawable.dm_bt,R.color.dm_cyan,R.string.bt_hint),
-  Tile(6,R.string.modules_api,R.drawable.dm_api,R.color.dm_green,R.string.api_hint),
-  Tile(9,R.string.modules_adb,R.drawable.dm_terminal,R.color.dm_purple,R.string.adb_hint))
+ private val primary = buildList {
+  add(Tile(5,R.string.modules_json,R.drawable.dm_json,R.color.dm_primary,R.string.json_hint))
+  add(Tile(7,R.string.modules_bt,R.drawable.dm_bt,R.color.dm_cyan,R.string.bt_hint))
+  if (context.resources.getBoolean(R.bool.show_debug_entries)) {
+   add(Tile(6,R.string.modules_api,R.drawable.dm_api,R.color.dm_green,R.string.api_hint))
+   add(Tile(9,R.string.modules_adb,R.drawable.dm_terminal,R.color.dm_purple,R.string.adb_hint))
+  }
+ }
  private val utility = listOf(
   Tile(10,R.string.hex,R.drawable.dm_json,R.color.dm_cyan),
   Tile(11,R.string.base64,R.drawable.dm_terminal,R.color.dm_green),
