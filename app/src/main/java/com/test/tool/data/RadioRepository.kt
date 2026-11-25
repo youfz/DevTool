@@ -6,6 +6,7 @@ import android.bluetooth.le.*
 import android.content.Context
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
 import kotlinx.coroutines.flow.MutableStateFlow
 import java.util.UUID
 import java.util.concurrent.Executors
@@ -31,6 +32,14 @@ class RadioRepository(private val context: Context) {
  private fun log(line: String) {
   state.value = state.value.copy(log = (state.value.log + ("${java.time.LocalTime.now().withNano(0)} $line")).takeLast(100))
  }
+ private fun logDiscoveredPeer(peer: Peer) {
+  val type = if (peer.classic) "Classic paired" else "BLE scan"
+  val name = peer.name?.takeIf { it.isNotBlank() } ?: "Unknown"
+  val signal = peer.rssi?.let { ", RSSI=$it dBm" }.orEmpty()
+  val message = "$type: name=$name, address=${peer.address}$signal"
+  Log.d("BluetoothScan", message)
+  log(message)
+ }
  fun close() {
   generation++
   handler.removeCallbacks(timeout)
@@ -52,6 +61,7 @@ class RadioRepository(private val context: Context) {
      .filter { it.type != BluetoothDevice.DEVICE_TYPE_LE }
      .map { Peer(it.address, it.name, rssi = null, classic = true) }
     state.value = state.value.copy(peers = peers)
+    peers.forEach(::logDiscoveredPeer)
    } else {
     val callback = object : ScanCallback() {
      override fun onScanResult(type: Int, result: ScanResult) {
@@ -59,8 +69,12 @@ class RadioRepository(private val context: Context) {
       val device = result.device
       val peer = Peer(device.address, result.scanRecord?.deviceName, result.rssi, classic = false)
       val current = state.value
+      Log.d("BluetoothScan", "deviceName :${result.scanRecord?.deviceName} device.address:${device.address}")
       val peers = mergeScanResult(current.peers, peer) { runCatching { device.name }.getOrNull() }
       state.value = current.copy(peers = peers)
+      if (peers.size > current.peers.size) {
+       logDiscoveredPeer(peers.first { it.address == peer.address })
+      }
      }
      override fun onScanFailed(code: Int) { if(scan === this) fail("BLE scan: $code") }
     }
